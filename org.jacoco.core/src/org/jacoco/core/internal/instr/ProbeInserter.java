@@ -26,6 +26,7 @@ import org.objectweb.asm.Type;
 class ProbeInserter extends MethodVisitor implements IProbeInserter {
 
 	private final IProbeArrayStrategy arrayStrategy;
+	private final boolean clinit;
 
 	/** Position of the inserted variable. */
 	private final int variable;
@@ -46,9 +47,10 @@ class ProbeInserter extends MethodVisitor implements IProbeInserter {
 	 *            callback to create the code that retrieves the reference to
 	 *            the probe array
 	 */
-	ProbeInserter(final int access, final String desc, final MethodVisitor mv,
+	ProbeInserter(final int access, final String name, final String desc, final MethodVisitor mv,
 			final IProbeArrayStrategy arrayStrategy) {
 		super(JaCoCo.ASM_API_VERSION, mv);
+		this.clinit = InstrSupport.CLINIT_NAME.equals(name);
 		this.arrayStrategy = arrayStrategy;
 		int pos = (Opcodes.ACC_STATIC & access) == 0 ? 1 : 0;
 		for (final Type t : Type.getArgumentTypes(desc)) {
@@ -82,7 +84,7 @@ class ProbeInserter extends MethodVisitor implements IProbeInserter {
 
 	@Override
 	public void visitCode() {
-		accessorStackSize = arrayStrategy.storeInstance(mv, variable);
+		accessorStackSize = arrayStrategy.storeInstance(mv, clinit, variable);
 		mv.visitCode();
 	}
 

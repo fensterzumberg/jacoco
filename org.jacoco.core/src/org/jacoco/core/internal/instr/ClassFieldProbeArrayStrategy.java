@@ -18,11 +18,11 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 /**
- * The strategy for regular classes and Java 8 interfaces which adds a static
- * field to hold the probe array and a static initialization method requesting
- * the probe array from the runtime.
+ * The strategy for regular classes adds a static field to hold the probe array
+ * and a static initialization method requesting the probe array from the
+ * runtime.
  */
-class FieldProbeArrayStrategy implements IProbeArrayStrategy {
+class ClassFieldProbeArrayStrategy implements IProbeArrayStrategy {
 
 	/**
 	 * Frame stack with a single boolean array.
@@ -37,26 +37,22 @@ class FieldProbeArrayStrategy implements IProbeArrayStrategy {
 	private final String className;
 	private final long classId;
 	private final boolean withFrames;
-	private final boolean isInterface;
-	private final int fieldAccess;
 	private final IExecutionDataAccessorGenerator accessorGenerator;
 
-	FieldProbeArrayStrategy(final String className, final long classId,
-			final boolean withFrames, final boolean isInterface,
-			final int fieldAccess,
+	ClassFieldProbeArrayStrategy(final String className, final long classId,
+			final boolean withFrames,
 			final IExecutionDataAccessorGenerator accessorGenerator) {
 		this.className = className;
 		this.classId = classId;
 		this.withFrames = withFrames;
-		this.isInterface = isInterface;
-		this.fieldAccess = fieldAccess;
 		this.accessorGenerator = accessorGenerator;
 	}
 
-	public int storeInstance(final MethodVisitor mv, final int variable) {
+	public int storeInstance(final MethodVisitor mv, final boolean clinit,
+			final int variable) {
 		mv.visitMethodInsn(Opcodes.INVOKESTATIC, className,
 				InstrSupport.INITMETHOD_NAME, InstrSupport.INITMETHOD_DESC,
-				isInterface);
+				false);
 		mv.visitVarInsn(Opcodes.ASTORE, variable);
 		return 1;
 	}
@@ -67,7 +63,7 @@ class FieldProbeArrayStrategy implements IProbeArrayStrategy {
 	}
 
 	private void createDataField(final ClassVisitor cv) {
-		cv.visitField(fieldAccess, InstrSupport.DATAFIELD_NAME,
+		cv.visitField(InstrSupport.DATAFIELD_ACC, InstrSupport.DATAFIELD_NAME,
 				InstrSupport.DATAFIELD_DESC, null, null);
 	}
 

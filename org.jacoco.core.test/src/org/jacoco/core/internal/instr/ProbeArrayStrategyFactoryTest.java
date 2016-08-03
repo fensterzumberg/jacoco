@@ -14,7 +14,6 @@ package org.jacoco.core.internal.instr;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import org.jacoco.core.runtime.IExecutionDataAccessorGenerator;
 import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator;
@@ -99,8 +98,8 @@ public class ProbeArrayStrategyFactoryTest {
 		assertInitMethod(true);
 
 		final ClassVisitorMock cv = new ClassVisitorMock();
-		strategy.storeInstance(cv.visitMethod(0, null, null, null, null), 0);
-		assertFalse(cv.interfaceMethod);
+		strategy.storeInstance(cv.visitMethod(0, null, null, null, null), false,
+				0);
 	}
 
 	@Test
@@ -121,19 +120,14 @@ public class ProbeArrayStrategyFactoryTest {
 	public void testEmptyInterface7StoreInstance() {
 		IProbeArrayStrategy strategy = test(Opcodes.V1_7,
 				Opcodes.ACC_INTERFACE, false, false);
-		strategy.storeInstance(null, 0);
+		strategy.storeInstance(null, false, 0);
 	}
 
 	@Test
 	public void testInterface8() {
-		final IProbeArrayStrategy strategy = test(Opcodes.V1_8,
-				Opcodes.ACC_INTERFACE, false, true);
+		test(Opcodes.V1_8, Opcodes.ACC_INTERFACE, false, true);
 		assertDataField(InstrSupport.DATAFIELD_INTF_ACC);
-		assertInitMethod(true);
-
-		final ClassVisitorMock cv = new ClassVisitorMock();
-		strategy.storeInstance(cv.visitMethod(0, null, null, null, null), 0);
-		assertTrue(cv.interfaceMethod);
+		assertClinit();
 	}
 
 	@Test
@@ -148,6 +142,13 @@ public class ProbeArrayStrategyFactoryTest {
 		test(Opcodes.V1_8, Opcodes.ACC_INTERFACE, true, false);
 		assertNoDataField();
 		assertNoInitMethod();
+	}
+
+	@Test
+	public void testClinitAndMethodsInterface8() {
+		test(Opcodes.V1_8, Opcodes.ACC_INTERFACE, true, true);
+		assertDataField(InstrSupport.DATAFIELD_INTF_ACC);
+		assertClinit();
 	}
 
 	private IProbeArrayStrategy test(int version, int access, boolean clinit,
@@ -186,9 +187,9 @@ public class ProbeArrayStrategyFactoryTest {
 
 		private int methodAccess;
 		private String methodName;
+		private String methodDesc;
 
 		private boolean frames;
-		private boolean interfaceMethod;
 
 		ClassVisitorMock() {
 			super(Opcodes.ASM5);
@@ -209,6 +210,7 @@ public class ProbeArrayStrategyFactoryTest {
 			assertNull(methodName);
 			methodAccess = access;
 			methodName = name;
+			methodDesc = desc;
 			return new MethodVisitor(Opcodes.ASM5) {
 				@Override
 				public void visitFrame(int type, int nLocal, Object[] local,
@@ -219,7 +221,16 @@ public class ProbeArrayStrategyFactoryTest {
 				@Override
 				public void visitMethodInsn(int opcode, String owner,
 						String name, String desc, boolean itf) {
-					interfaceMethod = itf;
+					// method's owner is not interface:
+					assertFalse(itf);
+
+					if ("getProbes".equals(name)) {
+						return;
+					}
+					assertEquals(Opcodes.INVOKESTATIC, opcode);
+					assertEquals("Foo", owner);
+					assertEquals(InstrSupport.INITMETHOD_NAME, name);
+					assertEquals(InstrSupport.INITMETHOD_DESC, desc);
 				}
 			};
 		}
@@ -236,8 +247,19 @@ public class ProbeArrayStrategyFactoryTest {
 
 	void assertInitMethod(boolean frames) {
 		assertEquals(InstrSupport.INITMETHOD_NAME, cv.methodName);
+		assertEquals(InstrSupport.INITMETHOD_DESC, cv.methodDesc);
 		assertEquals(InstrSupport.INITMETHOD_ACC, cv.methodAccess);
 		assertEquals(Boolean.valueOf(frames), Boolean.valueOf(cv.frames));
+	}
+
+	/**
+	 * Assert that {@code <clinit>} method added.
+	 */
+	void assertClinit() {
+		assertEquals(InstrSupport.CLINIT_NAME, cv.methodName);
+		assertEquals(InstrSupport.CLINIT_DESC, cv.methodDesc);
+		assertEquals(InstrSupport.INITMETHOD_ACC, cv.methodAccess);
+		assertEquals(Boolean.valueOf(false), Boolean.valueOf(cv.frames));
 	}
 
 	void assertNoInitMethod() {

@@ -50,16 +50,15 @@ public final class ProbeArrayStrategyFactory {
 				return new NoneProbeArrayStrategy();
 			}
 			if (version >= Opcodes.V1_8 && counter.hasMethods()) {
-				return new FieldProbeArrayStrategy(className, classId,
-						withFrames, true, InstrSupport.DATAFIELD_INTF_ACC,
-						accessorGenerator);
+				return new InterfaceFieldProbeArrayStrategy(className, classId,
+						counter.getCount(), accessorGenerator);
 			} else {
 				return new LocalProbeArrayStrategy(className, classId,
 						counter.getCount(), accessorGenerator);
 			}
 		} else {
-			return new FieldProbeArrayStrategy(className, classId, withFrames,
-					false, InstrSupport.DATAFIELD_ACC, accessorGenerator);
+			return new ClassFieldProbeArrayStrategy(className, classId,
+					withFrames, accessorGenerator);
 		}
 	}
 
